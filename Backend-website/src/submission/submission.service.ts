@@ -2,13 +2,14 @@ import {
   Injectable,
   Logger,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Submission } from './submission.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { SupabaseService } from './supabase.service';
-import sanitizeFilename from 'sanitize-filename'; // Default import (requires tsconfig flag)
+import sanitizeFilename from 'sanitize-filename';
 
 @Injectable()
 export class SubmissionService {
@@ -24,13 +25,19 @@ export class SubmissionService {
     dto: CreateSubmissionDto,
     file: Express.Multer.File,
   ): Promise<Submission> {
-    let filePath: string | undefined; // Declare outside try for catch access
+    let filePath: string | undefined;
 
     try {
       const sanitizedName = sanitizeFilename(file.originalname);
-      filePath = `manuscripts/${Date.now()}_${sanitizedName}`;
-      await this.supabaseService.uploadFile(file, filePath);
-      const fileUrl = this.supabaseService.getFileUrl('manuscripts', filePath);
+      filePath = `${Date.now()}_${sanitizedName}`;
+      const uploadedPath = await this.supabaseService.uploadFile(
+        file,
+        filePath,
+      );
+      const fileUrl = this.supabaseService.getFileUrl(
+        'manuscripts',
+        uploadedPath,
+      );
 
       const submissionData = {
         ...dto,
@@ -40,7 +47,6 @@ export class SubmissionService {
         manuscriptFilePath: fileUrl,
       };
 
-      // Validate parsed values
       if (
         isNaN(submissionData.totalAuthors) ||
         isNaN(submissionData.numberOfPages)
@@ -55,7 +61,6 @@ export class SubmissionService {
       return await this.submissionRepository.save(submission);
     } catch (error) {
       this.logger.error(`Submission creation failed: ${error.message}`);
-      // Rollback: Delete uploaded file if exists
       if (filePath) {
         await this.supabaseService
           .deleteFile('manuscripts', filePath)
@@ -71,6 +76,7 @@ export class SubmissionService {
     }
   }
 
+  // NEW: Fetch all submissions
   async findAll(): Promise<Submission[]> {
     try {
       const submissions = await this.submissionRepository.find({
@@ -81,6 +87,55 @@ export class SubmissionService {
     } catch (error) {
       this.logger.error(`Failed to fetch submissions: ${error.message}`);
       throw new InternalServerErrorException('Failed to fetch submissions');
+    }
+  }
+
+  // NEW: Fetch one submission by ID
+  async findOne(id: number): Promise<Submission> {
+    try {
+      const submission = await this.submissionRepository.findOne({
+        where: { id },
+      });
+      if (!submission) {
+        throw new NotFoundException(`Submission with ID ${id} not found`);
+      }
+      this.logger.log(`Fetched submission: ${id}`);
+      return submission;
+    } catch (error) {
+      this.logger.error(`Failed to fetch submission ${id}: ${error.message}`);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to fetch submission ${id}`,
+      );
+    }
+  }
+
+  async findByManuscriptId(
+    id: number,
+    correspondingAuthorEmail: string,
+  ): Promise<Submission> {
+    try {
+      const submission = await this.submissionRepository.findOne({
+        where: { id, correspondingAuthorEmail },
+        order: { createdAt: 'DESC' },
+      });
+      if (!submission) {
+        throw new NotFoundException(`Submission with ID ${id} not found`);
+      }
+      this.logger.log(`Fetched submission for ID: ${id}`);
+      return submission;
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch submission for ID ${id}: ${error.message}`,
+      );
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to fetch submission for ID ${id}`,
+      );
     }
   }
 }

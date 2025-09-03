@@ -6,6 +6,15 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+export enum TrackStatus {
+  RECEIVED = 'Received',
+  UNDER_REVIEW = 'Under Review',
+  REVISION = 'Revision',
+  CORRECTION = 'Correction',
+  APPROVED = 'Approved',
+  REJECTED = 'Rejected',
+}
+
 @Entity('submissions') // Table name in Supabase (ensure lowercase in DB)
 export class Submission {
   @PrimaryGeneratedColumn()
@@ -73,4 +82,15 @@ export class Submission {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @Column({
+    type: 'enum',
+    enum: TrackStatus,
+    default: TrackStatus.UNDER_REVIEW,
+  })
+  status: TrackStatus;
+
+  @Column({ nullable: true })
+  remarks: string;
+  //
 }
