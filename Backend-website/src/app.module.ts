@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, ValidationPipe } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -20,4 +20,12 @@ import { StudentModule } from './student/student.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer) {
+    consumer
+      .apply(
+        new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+      )
+      .forRoutes('*'); // Global validation
+  }
+}

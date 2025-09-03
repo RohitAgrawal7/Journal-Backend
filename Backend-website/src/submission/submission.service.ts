@@ -70,4 +70,17 @@ export class SubmissionService {
       );
     }
   }
+
+  async findAll(): Promise<Submission[]> {
+    try {
+      const submissions = await this.submissionRepository.find({
+        order: { createdAt: 'DESC' }, // Latest first
+      });
+      this.logger.log(`Fetched ${submissions.length} submissions`);
+      return submissions;
+    } catch (error) {
+      this.logger.error(`Failed to fetch submissions: ${error.message}`);
+      throw new InternalServerErrorException('Failed to fetch submissions');
+    }
+  }
 }
