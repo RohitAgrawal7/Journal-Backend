@@ -9,12 +9,11 @@ export class SupabaseService {
 
   constructor(configService: ConfigService) {
     const supabaseUrl = configService.get<string>('SUPABASE_URL');
-    const supabaseAnonKey = configService.get<string>('SUPABASE_ANON_KEY');
     const supabaseServiceRoleKey = configService.get<string>(
       'SUPABASE_SERVICE_ROLE_KEY',
     );
 
-    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
       throw new BadRequestException(
         'Supabase configuration is missing in environment variables',
       );
@@ -23,38 +22,41 @@ export class SupabaseService {
     this.supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
   }
 
-  async uploadFile(file: Express.Multer.File, path: string): Promise<string> {
+  async uploadFile(
+    file: Express.Multer.File,
+    path: string,
+    bucket = 'manuscripts',
+  ): Promise<string> {
     if (!file || !file.buffer) {
       throw new BadRequestException('File or file buffer is missing');
     }
-    console.log(file);
-
     if (!path) {
       throw new BadRequestException('Path is missing');
     }
 
     try {
       const { data, error } = await this.supabase.storage
-        .from('manuscripts')
+        .from(bucket)
         .upload(path, file.buffer, {
           contentType: file.mimetype,
         });
 
       if (error) {
-        console.log('in error' + path);
-        this.logger.error(`File upload failed: ${error.message}`);
+        this.logger.error(
+          `File upload failed to bucket ${bucket}: ${error.message}`,
+        );
         throw new BadRequestException(`File upload failed: ${error.message}`);
       }
 
-      this.logger.log(`File uploaded successfully: ${data.path}`);
+      this.logger.log(`File uploaded successfully to ${bucket}/${data.path}`);
       return data.path;
     } catch (error) {
-      this.logger.error(`File upload failed: ${error.message}`);
+      this.logger.error(`File upload failed to ${bucket}: ${error.message}`);
       throw new BadRequestException(`File upload failed: ${error.message}`);
     }
   }
 
-  getFileUrl(bucket: string, path: string) {
+  getFileUrl(bucket: string, path: string): string {
     if (!bucket || !path) {
       throw new BadRequestException('Bucket or path is missing');
     }
@@ -63,13 +65,14 @@ export class SupabaseService {
     return data.publicUrl;
   }
 
-  // New method for deletion (called in rollback)
   async deleteFile(bucket: string, path: string) {
     const { error } = await this.supabase.storage.from(bucket).remove([path]);
     if (error) {
-      this.logger.error(`File delete failed: ${error.message}`);
+      this.logger.error(
+        `File delete failed from ${bucket}/${path}: ${error.message}`,
+      );
       throw new BadRequestException(`File delete failed: ${error.message}`);
     }
-    this.logger.log(`File deleted successfully: ${path}`);
+    this.logger.log(`File deleted successfully from ${bucket}/${path}`);
   }
 }

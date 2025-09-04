@@ -6,6 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 import { SubmissionModule } from './submission/submission.module';
 import { TypeOrmConfigService } from './type-orm-config.service';
 import { StudentModule } from './student/student.module';
+import { ReviewerModule } from './reviewer/reviewer.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { StudentModule } from './student/student.module';
     }),
     SubmissionModule,
     StudentModule,
+    ReviewerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
