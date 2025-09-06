@@ -15,7 +15,7 @@ export enum TrackStatus {
   REJECTED = 'Rejected',
 }
 
-@Entity('submissions') // Table name in Supabase (ensure lowercase in DB)
+@Entity('submissionPapers') // Table name in Supabase (ensure lowercase in DB)
 export class Submission {
   @PrimaryGeneratedColumn()
   id: number;
