@@ -9,11 +9,15 @@ import {
   BadRequestException,
   Logger,
   ParseIntPipe,
+  Query,
+  Patch,
+  Delete,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SubmissionService } from './submission.service';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
-import { Submission } from './submission.entity';
+import { Submission, SubmissionStatus } from './submission.entity';
+import { UpdateSubmissionStatusDto } from './dto/create-submission.dto';
 
 @Controller('submission')
 export class SubmissionController {
@@ -23,11 +27,13 @@ export class SubmissionController {
 
   @Post()
   @UseInterceptors(
-    FileInterceptor('file', {
+    FileInterceptor('manuscript', {
       fileFilter: (req, file, cb) => {
-        if (!file.originalname.match(/\.(doc|docx|rtf)$/i)) {
+        if (!file.originalname.match(/\.(doc|docx|pdf)$/i)) {
           return cb(
-            new BadRequestException('Only .doc, .docx, .rtf files allowed!'),
+            new BadRequestException(
+              'Only .doc, .docx, and .pdf files allowed!',
+            ),
             false,
           );
         }
@@ -37,40 +43,77 @@ export class SubmissionController {
     }),
   )
   async create(
-    @Body() createSubmissionDto: CreateSubmissionDto,
-    @UploadedFile() file: Express.Multer.File,
-  ): Promise<{ message: string; submission: Submission }> {
-    if (!file) {
-      throw new BadRequestException('File is required');
+    @Body() dto: CreateSubmissionDto,
+    @UploadedFile() manuscript: Express.Multer.File,
+  ): Promise<{ message: string; submission: Submission; trackingId: string }> {
+    if (!manuscript) {
+      throw new BadRequestException('Manuscript file is required');
     }
-    const submission = await this.submissionService.create(
-      createSubmissionDto,
-      file,
+
+    const submission = await this.submissionService.create(dto, manuscript);
+    this.logger.log(
+      `Submission created successfully: ${submission.trackingId}`,
     );
-    this.logger.log(`Submission created successfully: ${submission.id}`);
-    return { message: 'Submission successful!', submission };
+
+    return {
+      message: 'Submission successful!',
+      submission,
+      trackingId: submission.trackingId,
+    };
   }
 
-  // NEW: GET all submissions
   @Get()
-  async findAll(): Promise<Submission[]> {
-    return await this.submissionService.findAll();
+  async findAll(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('status') status?: SubmissionStatus,
+    @Query('search') search?: string,
+  ): Promise<{
+    data: Submission[];
+    count: number;
+    page: number;
+    totalPages: number;
+  }> {
+    return await this.submissionService.findAll(page, limit, status, search);
   }
 
-  // NEW: GET one submission by ID
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<Submission> {
     return await this.submissionService.findOne(id);
   }
 
-  @Get('manuscript/:id/:correspondingAuthorEmail')
+  @Get('track/:trackingId')
+  async findByTrackingId(
+    @Param('trackingId') trackingId: string,
+  ): Promise<Submission> {
+    return await this.submissionService.findByTrackingId(trackingId);
+  }
+
+  @Get('author/:id/:email')
   async findByManuscriptId(
     @Param('id', ParseIntPipe) id: number,
-    @Param('correspondingAuthorEmail') correspondingAuthorEmail: string,
+    @Param('email') email: string,
   ): Promise<Submission> {
-    return await this.submissionService.findByManuscriptId(
+    return await this.submissionService.findByManuscriptId(id, email);
+  }
+
+  @Patch(':id/status')
+  async updateStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateDto: UpdateSubmissionStatusDto,
+  ): Promise<Submission> {
+    return await this.submissionService.updateStatus(
       id,
-      correspondingAuthorEmail,
+      updateDto.status as SubmissionStatus,
+      updateDto.adminRemarks,
     );
+  }
+
+  @Delete(':id')
+  async delete(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ message: string }> {
+    await this.submissionService.delete(id);
+    return { message: 'Submission deleted successfully' };
   }
 }

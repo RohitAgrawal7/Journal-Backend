@@ -4,18 +4,18 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 
-export enum TrackStatus {
-  RECEIVED = 'Received',
-  UNDER_REVIEW = 'Under Review',
-  REVISION = 'Revision',
-  CORRECTION = 'Correction',
-  APPROVED = 'Approved',
-  REJECTED = 'Rejected',
+export enum SubmissionStatus {
+  SUBMITTED = 'submitted',
+  UNDER_REVIEW = 'under_review',
+  REVISION_REQUIRED = 'revision_required',
+  ACCEPTED = 'accepted',
+  REJECTED = 'rejected',
 }
 
-@Entity('submissionPapers') // Table name in Supabase (ensure lowercase in DB)
+@Entity('submission') // Changed to more standard table name
 export class Submission {
   @PrimaryGeneratedColumn()
   id: number;
@@ -38,28 +38,29 @@ export class Submission {
   @Column()
   correspondingAuthorName: string;
 
-  @Column()
+  @Column({ nullable: true })
   correspondingAuthorMobile: string;
 
   @Column()
+  @Index() // Add index for faster email searches
   correspondingAuthorEmail: string;
 
-  @Column()
+  @Column({ nullable: true })
   correspondingAuthorDepartment: string;
 
-  @Column()
+  @Column({ nullable: true })
   correspondingAuthorOrganization: string;
 
-  @Column()
+  @Column({ nullable: true })
   whatsappNumber: string;
 
-  @Column()
+  @Column({ nullable: true })
   city: string;
 
   @Column({ nullable: true })
   state: string;
 
-  @Column()
+  @Column({ nullable: true })
   country: string;
 
   @Column()
@@ -72,7 +73,7 @@ export class Submission {
   numberOfPages: number;
 
   @Column()
-  manuscriptFilePath: string; // Supabase Storage URL
+  manuscriptFilePath: string;
 
   @Column({ default: false })
   agreeToTerms: boolean;
@@ -85,12 +86,27 @@ export class Submission {
 
   @Column({
     type: 'enum',
-    enum: TrackStatus,
-    default: TrackStatus.UNDER_REVIEW,
+    enum: SubmissionStatus, // Updated enum name
+    default: SubmissionStatus.SUBMITTED, // Updated default status
   })
-  status: TrackStatus;
+  status: SubmissionStatus;
 
+  @Column({ type: 'text', nullable: true })
+  adminRemarks: string; // Changed from 'remarks' to match frontend
+
+  // NEW: Add file name for better tracking
   @Column({ nullable: true })
-  remarks: string;
-  //
+  originalFileName: string;
+
+  // NEW: Add tracking ID for external reference
+  @Column({ unique: true, nullable: true })
+  trackingId: string;
+
+  // NEW: Add version for revision tracking
+  @Column({ default: 1 })
+  version: number;
+
+  // NEW: Add reference to previous version for revisions
+  @Column({ nullable: true })
+  previousVersionId: number;
 }

@@ -3,13 +3,15 @@ import {
   Logger,
   InternalServerErrorException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Submission } from './submission.entity';
+import { Repository, Like } from 'typeorm';
+import { Submission, SubmissionStatus } from './submission.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { SupabaseService } from './supabase.service';
 import sanitizeFilename from 'sanitize-filename';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class SubmissionService {
@@ -28,6 +30,9 @@ export class SubmissionService {
     let filePath: string | undefined;
 
     try {
+      // Generate tracking ID
+      const trackingId = `UJGSM-${uuidv4().substring(0, 8).toUpperCase()}`;
+
       const sanitizedName = sanitizeFilename(file.originalname);
       filePath = `${Date.now()}_${sanitizedName}`;
       const uploadedPath = await this.supabaseService.uploadFile(
@@ -45,19 +50,21 @@ export class SubmissionService {
         numberOfPages: parseInt(dto.numberOfPages, 10),
         agreeToTerms: dto.agreeToTerms === 'true',
         manuscriptFilePath: fileUrl,
+        originalFileName: file.originalname,
+        trackingId,
       };
 
       if (
         isNaN(submissionData.totalAuthors) ||
         isNaN(submissionData.numberOfPages)
       ) {
-        throw new Error(
+        throw new BadRequestException(
           'Invalid number format for totalAuthors or numberOfPages',
         );
       }
 
       const submission = this.submissionRepository.create(submissionData);
-      this.logger.log(`Creating submission: ${JSON.stringify(submission)}`);
+      this.logger.log(`Creating submission with tracking ID: ${trackingId}`);
       return await this.submissionRepository.save(submission);
     } catch (error) {
       this.logger.error(`Submission creation failed: ${error.message}`);
@@ -76,21 +83,46 @@ export class SubmissionService {
     }
   }
 
-  // NEW: Fetch all submissions
-  async findAll(): Promise<Submission[]> {
+  async findAll(
+    page: number = 1,
+    limit: number = 10,
+    status?: SubmissionStatus,
+    search?: string,
+  ): Promise<{
+    data: Submission[];
+    count: number;
+    page: number;
+    totalPages: number;
+  }> {
     try {
-      const submissions = await this.submissionRepository.find({
-        order: { createdAt: 'DESC' }, // Latest first
+      const skip = (page - 1) * limit;
+      const where: any = {};
+
+      if (status) {
+        where.status = status;
+      }
+
+      if (search) {
+        where.manuscriptTitle = Like(`%${search}%`);
+      }
+
+      const [data, count] = await this.submissionRepository.findAndCount({
+        where,
+        order: { createdAt: 'DESC' },
+        skip,
+        take: limit,
       });
-      this.logger.log(`Fetched ${submissions.length} submissions`);
-      return submissions;
+
+      const totalPages = Math.ceil(count / limit);
+
+      this.logger.log(`Fetched ${data.length} submissions out of ${count}`);
+      return { data, count, page, totalPages };
     } catch (error) {
       this.logger.error(`Failed to fetch submissions: ${error.message}`);
       throw new InternalServerErrorException('Failed to fetch submissions');
     }
   }
 
-  // NEW: Fetch one submission by ID
   async findOne(id: number): Promise<Submission> {
     try {
       const submission = await this.submissionRepository.findOne({
@@ -112,6 +144,31 @@ export class SubmissionService {
     }
   }
 
+  async findByTrackingId(trackingId: string): Promise<Submission> {
+    try {
+      const submission = await this.submissionRepository.findOne({
+        where: { trackingId },
+      });
+      if (!submission) {
+        throw new NotFoundException(
+          `Submission with tracking ID ${trackingId} not found`,
+        );
+      }
+      this.logger.log(`Fetched submission by tracking ID: ${trackingId}`);
+      return submission;
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch submission ${trackingId}: ${error.message}`,
+      );
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to fetch submission ${trackingId}`,
+      );
+    }
+  }
+
   async findByManuscriptId(
     id: number,
     correspondingAuthorEmail: string,
@@ -119,12 +176,13 @@ export class SubmissionService {
     try {
       const submission = await this.submissionRepository.findOne({
         where: { id, correspondingAuthorEmail },
-        order: { createdAt: 'DESC' },
       });
       if (!submission) {
-        throw new NotFoundException(`Submission with ID ${id} not found`);
+        throw new NotFoundException(
+          `Submission with ID ${id} not found for email ${correspondingAuthorEmail}`,
+        );
       }
-      this.logger.log(`Fetched submission for ID: ${id}`);
+      this.logger.log(`Fetched submission for ID: ${id} and email`);
       return submission;
     } catch (error) {
       this.logger.error(
@@ -135,6 +193,68 @@ export class SubmissionService {
       }
       throw new InternalServerErrorException(
         `Failed to fetch submission for ID ${id}`,
+      );
+    }
+  }
+
+  async updateStatus(
+    id: number,
+    status: SubmissionStatus,
+    adminRemarks?: string,
+  ): Promise<Submission> {
+    try {
+      const submission = await this.submissionRepository.findOne({
+        where: { id },
+      });
+
+      if (!submission) {
+        throw new NotFoundException(`Submission with ID ${id} not found`);
+      }
+
+      submission.status = status;
+      if (adminRemarks) {
+        submission.adminRemarks = adminRemarks;
+      }
+
+      await this.submissionRepository.save(submission);
+      this.logger.log(`Updated status of submission ${id} to ${status}`);
+      return submission;
+    } catch (error) {
+      this.logger.error(`Failed to update submission ${id}: ${error.message}`);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to update submission ${id}`,
+      );
+    }
+  }
+
+  async delete(id: number): Promise<void> {
+    try {
+      const submission = await this.submissionRepository.findOne({
+        where: { id },
+      });
+
+      if (!submission) {
+        throw new NotFoundException(`Submission with ID ${id} not found`);
+      }
+
+      // Extract file path from URL for deletion
+      const filePath = submission.manuscriptFilePath.split('/').pop();
+      if (filePath) {
+        await this.supabaseService.deleteFile('manuscripts', filePath);
+      }
+
+      await this.submissionRepository.delete(id);
+      this.logger.log(`Deleted submission: ${id}`);
+    } catch (error) {
+      this.logger.error(`Failed to delete submission ${id}: ${error.message}`);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to delete submission ${id}`,
       );
     }
   }
