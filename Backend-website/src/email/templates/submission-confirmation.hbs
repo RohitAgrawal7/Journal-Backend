@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+   <html>
+   <head>
+     <title>Submission Confirmation</title>
+     <style>
+       body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
+       .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+       h1 { color: #008080; }
+       a { color: #008080; text-decoration: none; }
+       p { line-height: 1.6; }
+     </style>
+   </head>
+   <body>
+     <div class="container">
+       <h1>Dear {{name}},</h1>
+       <p>Your manuscript "<strong>{{manuscriptTitle}}</strong>" has been successfully submitted to the Universal Journal of Green SciTech & Management (UJGSM).</p>
+       <p><strong>Tracking ID:</strong> {{trackingId}}</p>
+       <p>Track your submission status <a href="{{trackUrl}}">here</a>.</p>
+       <p>If you have any questions, contact us at <a href="mailto:contact@uorapublications.com">contact@uorapublications.com</a>.</p>
+       <p>Best regards,<br>UJGSM Editorial Team</p>
+     </div>
+   </body>
+   </html>

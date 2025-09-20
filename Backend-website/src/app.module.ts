@@ -7,6 +7,8 @@ import { SubmissionModule } from './submission/submission.module';
 import { TypeOrmConfigService } from './type-orm-config.service';
 import { StudentModule } from './student/student.module';
 import { ReviewerModule } from './reviewer/reviewer.module';
+// import { EmailService } from './email/email.service';
+import { EmailModule } from './email/email.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { ReviewerModule } from './reviewer/reviewer.module';
     SubmissionModule,
     StudentModule,
     ReviewerModule,
+    // EmailService,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -4,6 +4,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
@@ -12,6 +13,7 @@ import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { SupabaseService } from './supabase.service';
 import sanitizeFilename from 'sanitize-filename';
 import { v4 as uuidv4 } from 'uuid';
+import { EmailService } from '../email/email.service'; // Add this import
 
 @Injectable()
 export class SubmissionService {
@@ -21,7 +23,15 @@ export class SubmissionService {
     @InjectRepository(Submission)
     private submissionRepository: Repository<Submission>,
     private supabaseService: SupabaseService,
-  ) {}
+    @Inject(EmailService) // Add this decorator
+    private emailService: EmailService,
+  ) {
+    // Test if emailService is available
+    if (!this.emailService) {
+      throw new Error('EmailService is not properly injected');
+    }
+    this.logger.log('EmailService injected successfully');
+  }
 
   async create(
     dto: CreateSubmissionDto,
@@ -52,6 +62,7 @@ export class SubmissionService {
         manuscriptFilePath: fileUrl,
         originalFileName: file.originalname,
         trackingId,
+        status: SubmissionStatus.SUBMITTED,
       };
 
       if (
@@ -64,6 +75,26 @@ export class SubmissionService {
       }
 
       const submission = this.submissionRepository.create(submissionData);
+      const savedSubmission = await this.submissionRepository.save(submission);
+
+      // Send confirmation email - make sure this is called
+      try {
+        await this.emailService.sendSubmissionConfirmation(
+          savedSubmission.correspondingAuthorEmail,
+          savedSubmission.correspondingAuthorName,
+          savedSubmission.trackingId,
+          savedSubmission.manuscriptTitle,
+        );
+        this.logger.log(
+          `Confirmation email sent to ${savedSubmission.correspondingAuthorEmail}`,
+        );
+      } catch (emailError) {
+        this.logger.error(
+          `Failed to send confirmation email: ${emailError.message}`,
+        );
+        // Don't throw error - submission was successful, just email failed
+      }
+
       this.logger.log(`Creating submission with tracking ID: ${trackingId}`);
       return await this.submissionRepository.save(submission);
     } catch (error) {
