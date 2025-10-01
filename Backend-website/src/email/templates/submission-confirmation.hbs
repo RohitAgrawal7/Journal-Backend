@@ -1,23 +1,194 @@
 <!DOCTYPE html>
-   <html>
-   <head>
-     <title>Submission Confirmation</title>
-     <style>
-       body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
-       .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
-       h1 { color: #008080; }
-       a { color: #008080; text-decoration: none; }
-       p { line-height: 1.6; }
-     </style>
-   </head>
-   <body>
-     <div class="container">
-       <h1>Dear {{name}},</h1>
-       <p>Your manuscript "<strong>{{manuscriptTitle}}</strong>" has been successfully submitted to the Universal Journal of Green SciTech & Management (UJGSM).</p>
-       <p><strong>Tracking ID:</strong> {{trackingId}}</p>
-       <p>Track your submission status <a href="{{trackUrl}}">here</a>.</p>
-       <p>If you have any questions, contact us at <a href="mailto:contact@uorapublications.com">contact@uorapublications.com</a>.</p>
-       <p>Best regards,<br>UJGSM Editorial Team</p>
-     </div>
-   </body>
-   </html>
+<html>
+<head>
+  <title>Paper Submission Acknowledgement - Universal Journal of Green SciTech & Management</title>
+  <style>
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background-color: #f8f9fa; 
+      margin: 0; 
+      padding: 20px; 
+      line-height: 1.6; 
+    }
+    .container { 
+      max-width: 700px; 
+      margin: 0 auto; 
+      background: white; 
+      padding: 30px; 
+      border-radius: 10px; 
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .header { 
+      text-align: center; 
+      border-bottom: 3px solid #008080; 
+      padding-bottom: 20px; 
+      margin-bottom: 30px; 
+    }
+    .journal-title { 
+      color: #008080; 
+      font-size: 24px; 
+      font-weight: bold; 
+      margin: 0; 
+    }
+    .subtitle { 
+      color: #666; 
+      font-size: 16px; 
+      margin: 5px 0 0 0; 
+    }
+    h1 { 
+      color: #2c3e50; 
+      font-size: 20px; 
+      margin-bottom: 20px; 
+    }
+    .info-box { 
+      background-color: #f0f8f8; 
+      border-left: 4px solid #008080; 
+      padding: 20px; 
+      margin: 20px 0; 
+      border-radius: 5px; 
+    }
+    .info-item { 
+      margin: 8px 0; 
+    }
+    .label { 
+      font-weight: bold; 
+      color: #2c3e50; 
+    }
+    .track-button { 
+      display: inline-block; 
+      background-color: #008080; 
+      color: white; 
+      padding: 12px 25px; 
+      text-decoration: none; 
+      border-radius: 5px; 
+      margin: 20px 0; 
+      font-weight: bold; 
+    }
+    .track-button:hover { 
+      background-color: #006666; 
+    }
+    .process-section { 
+      background-color: #fff8f0; 
+      border: 1px solid #ffd700; 
+      padding: 20px; 
+      margin: 20px 0; 
+      border-radius: 5px; 
+    }
+    .criteria-list { 
+      padding-left: 20px; 
+    }
+    .criteria-list li { 
+      margin: 5px 0; 
+    }
+    .contact-section { 
+      background-color: #f5f5f5; 
+      padding: 20px; 
+      margin: 20px 0; 
+      border-radius: 5px; 
+    }
+    .footer { 
+      text-align: center; 
+      color: #666; 
+      font-size: 12px; 
+      margin-top: 30px; 
+      padding-top: 20px; 
+      border-top: 1px solid #ddd; 
+    }
+    a { 
+      color: #008080; 
+      text-decoration: none; 
+    }
+    a:hover { 
+      text-decoration: underline; 
+    }
+    .note { 
+      background-color: #e8f4f8; 
+      border: 1px solid #b3d9e6; 
+      padding: 15px; 
+      margin: 20px 0; 
+      border-radius: 5px; 
+      font-weight: bold; 
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2 class="journal-title">Universal Journal of Green Sci-Tech & Management</h2>
+      <p class="subtitle">Paper Submission Acknowledgement</p>
+    </div>
+
+    <h1>Dear {{name}},</h1>
+    
+    <p>Congratulations! We are pleased to inform you that your paper has been successfully submitted to the Universal Journal of Green Sci-Tech & Management (UJGSM).</p>
+
+    <div class="info-box">
+      <div class="info-item">
+        <span class="label">Registration ID:</span> {{trackingId}}
+      </div>
+      <div class="info-item">
+        <span class="label">Paper Title:</span> {{manuscriptTitle}}
+      </div>
+      <div class="info-item">
+        <span class="label">Corresponding Author:</span> {{name}}
+      </div>
+      <div class="info-item">
+        <span class="label">Email:</span> {{email}}
+      </div>
+      <div class="info-item">
+        <span class="label">Submission Date:</span> {{submissionDate}}
+      </div>
+    </div>
+
+    <p>You can track your paper status using your registration ID and email address through our author portal.</p>
+    <a href="{{trackUrl}}" class="track-button">Track Your Paper Status</a>
+
+    <div class="note">
+      Note: You will receive an acceptance or revision notification within 5-7 business days.
+    </div>
+
+    <div class="process-section">
+      <h3 style="color: #2c3e50; margin-top: 0;">Peer Review Process</h3>
+      <p>Your submission will undergo our double-blind peer review process. This typically takes 2-3 weeks to complete, depending on the number of review rounds required. All manuscripts are evaluated based on:</p>
+      <ul class="criteria-list">
+        <li>Originality and significance of the research</li>
+        <li>Methodological rigor</li>
+        <li>Clarity of presentation</li>
+        <li>Alignment with journal's scope</li>
+        <li>Ethical compliance</li>
+      </ul>
+    </div>
+
+    <div class="contact-section">
+      <h3 style="color: #2c3e50; margin-top: 0;">Contact Information</h3>
+      <p><strong>Journal Website:</strong> <a href="https://ujgsm.uorapublications.com">https://ujgsm.uorapublications.com</a></p>
+      <p><strong>Editorial Email:</strong> <a href="mailto:editor@uorapublications.com">editor@uorapublications.com</a></p>
+      <p><strong>Phone Support:</strong> +91 9766930707 (Available Mon-Fri, 10AM-5PM IST)</p>
+      
+      <h4 style="color: #2c3e50;">Support Options:</h4>
+      <ul>
+        <li>Email your questions to <a href="mailto:editor@uorapublications.com">editor@uorapublications.com</a> (response within 2 business days)</li>
+        <li>For manuscript-related inquiries, please include your registration ID in all communications</li>
+        <li>Schedule a consultation call through our online booking system</li>
+      </ul>
+    </div>
+
+    <p style="margin-top: 30px;">Best regards,<br><strong>UJGSM Editorial Team</strong></p>
+
+    <div class="footer">
+      <p><strong>Universal Journal of Green SciTech & Management (UJGSM)</strong></p>
+      <p>Published by Universal Oneness Research Association (UORA)</p>
+      <p>Registered Address: E-1/8 Mathura Nagar, N-6, Cidco, Chhatrapati Sambhajinagar, Maharashtra 431003, India</p>
+      <p>ISSN: XXXX-XXXX | Frequency: Bi-monthly | Open Access: CC BY 4.0</p>
+      <p style="margin-top: 15px; font-size: 11px;">
+        <strong>Confidentiality Notice:</strong> This email contains confidential information intended solely for the addressed recipient. 
+        If you are not the intended recipient, please notify us immediately and delete it from your system.
+      </p>
+      <p style="margin-top: 10px;">
+        Please consider the environment before printing this email.<br>
+        This is a system generated email. Please include your registration ID ({{trackingId}}) in all correspondence.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

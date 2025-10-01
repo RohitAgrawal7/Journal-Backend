@@ -107,6 +107,24 @@ export class CreateSubmissionDto {
 }
 
 // NEW: Add DTO for updating submission status
+// export class UpdateSubmissionStatusDto {
+//   @IsString()
+//   @IsNotEmpty()
+//   @IsIn([
+//     'submitted',
+//     'under_review',
+//     'revision_required',
+//     'accepted',
+//     'rejected',
+//   ])
+//   status: string;
+
+//   @IsString()
+//   @IsOptional()
+//   adminRemarks?: string;
+// }
+
+// NEW: Add DTO for updating submission status
 export class UpdateSubmissionStatusDto {
   @IsString()
   @IsNotEmpty()

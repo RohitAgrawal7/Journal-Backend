@@ -12,6 +12,7 @@ import {
   Query,
   Patch,
   Delete,
+  HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SubmissionService } from './submission.service';
@@ -101,19 +102,28 @@ export class SubmissionController {
   async updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateDto: UpdateSubmissionStatusDto,
-  ): Promise<Submission> {
-    return await this.submissionService.updateStatus(
+  ): Promise<{ statusCode: number; message: string; data: Submission }> {
+    const submission = await this.submissionService.updateStatus(
       id,
       updateDto.status as SubmissionStatus,
       updateDto.adminRemarks,
     );
+    return {
+      statusCode: HttpStatus.OK,
+      message:
+        'Submission status updated successfully. Email notification sent to author.',
+      data: submission,
+    };
   }
 
   @Delete(':id')
   async delete(
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<{ message: string }> {
+  ): Promise<{ statusCode: number; message: string }> {
     await this.submissionService.delete(id);
-    return { message: 'Submission deleted successfully' };
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Submission deleted successfully',
+    };
   }
 }

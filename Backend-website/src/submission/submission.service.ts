@@ -228,6 +228,49 @@ export class SubmissionService {
     }
   }
 
+  // async updateStatus(
+  //   id: number,
+  //   status: SubmissionStatus,
+  //   adminRemarks?: string,
+  // ): Promise<Submission> {
+  //   try {
+  //     const submission = await this.submissionRepository.findOne({
+  //       where: { id },
+  //     });
+
+  //     if (!submission) {
+  //       throw new NotFoundException(`Submission with ID ${id} not found`);
+  //     }
+
+  //     // Update fields
+  //     submission.status = status || submission.status;
+  //     if (adminRemarks !== undefined) {
+  //       submission.adminRemarks = adminRemarks;
+  //     }
+  //     submission.updatedAt = new Date();
+
+  //     const updatedSubmission =
+  //       await this.submissionRepository.save(submission);
+
+  //     submission.status = status;
+  //     if (adminRemarks) {
+  //       submission.adminRemarks = adminRemarks;
+  //     }
+
+  //     await this.submissionRepository.save(submission);
+  //     this.logger.log(`Updated status of submission ${id} to ${status}`);
+  //     return submission;
+  //   } catch (error) {
+  //     this.logger.error(`Failed to update submission ${id}: ${error.message}`);
+  //     if (error instanceof NotFoundException) {
+  //       throw error;
+  //     }
+  //     throw new InternalServerErrorException(
+  //       `Failed to update submission ${id}`,
+  //     );
+  //   }
+  // }
+
   async updateStatus(
     id: number,
     status: SubmissionStatus,
@@ -242,22 +285,43 @@ export class SubmissionService {
         throw new NotFoundException(`Submission with ID ${id} not found`);
       }
 
-      submission.status = status;
-      if (adminRemarks) {
-        submission.adminRemarks = adminRemarks;
+      // Update fields
+      submission.status = status || submission.status;
+      if (adminRemarks !== undefined) {
+        submission.adminRemarks = adminRemarks.trim();
+      }
+      submission.updatedAt = new Date();
+
+      const updatedSubmission =
+        await this.submissionRepository.save(submission);
+
+      // Send status update email
+      try {
+        await this.emailService.sendStatusUpdate(
+          updatedSubmission.correspondingAuthorEmail,
+          updatedSubmission.correspondingAuthorName,
+          updatedSubmission.trackingId,
+          updatedSubmission.manuscriptTitle,
+          updatedSubmission.status,
+          updatedSubmission.adminRemarks || '',
+        );
+        this.logger.log(
+          `Status update email sent to ${updatedSubmission.correspondingAuthorEmail} for submission ${id} with status ${status}`,
+        );
+      } catch (emailError) {
+        this.logger.error(
+          `Failed to send status update email: ${emailError.message}`,
+        );
+        // Non-blocking: update succeeds even if email fails
       }
 
-      await this.submissionRepository.save(submission);
       this.logger.log(`Updated status of submission ${id} to ${status}`);
-      return submission;
+      return updatedSubmission;
     } catch (error) {
       this.logger.error(`Failed to update submission ${id}: ${error.message}`);
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        `Failed to update submission ${id}`,
-      );
+      throw error instanceof NotFoundException
+        ? error
+        : new InternalServerErrorException(`Failed to update submission ${id}`);
     }
   }
 
