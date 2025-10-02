@@ -6,6 +6,8 @@ nixpacksVersion = "1.13.1"
 
 [deploy]
 startCommand = "npm run start:prod"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 60
 
 [[services]]
 name = "ujgsm-backend"
