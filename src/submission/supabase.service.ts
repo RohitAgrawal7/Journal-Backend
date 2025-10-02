@@ -19,7 +19,12 @@ export class SupabaseService {
       );
     }
 
-    this.supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    this.supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
   }
 
   async uploadFile(
@@ -35,10 +40,22 @@ export class SupabaseService {
     }
 
     try {
+      // Check if bucket exists, create if it doesn't
+      const { data: buckets } = await this.supabase.storage.listBuckets();
+      const bucketExists = buckets.some((b) => b.name === bucket);
+
+      if (!bucketExists) {
+        await this.supabase.storage.createBucket(bucket, {
+          public: true,
+          fileSizeLimit: 50 * 1024 * 1024, // 50MB limit
+        });
+      }
+
       const { data, error } = await this.supabase.storage
         .from(bucket)
         .upload(path, file.buffer, {
           contentType: file.mimetype,
+          upsert: false, // Don't overwrite existing files
         });
 
       if (error) {
@@ -66,13 +83,34 @@ export class SupabaseService {
   }
 
   async deleteFile(bucket: string, path: string) {
-    const { error } = await this.supabase.storage.from(bucket).remove([path]);
-    if (error) {
-      this.logger.error(
-        `File delete failed from ${bucket}/${path}: ${error.message}`,
-      );
-      throw new BadRequestException(`File delete failed: ${error.message}`);
+    try {
+      const { error } = await this.supabase.storage.from(bucket).remove([path]);
+      if (error) {
+        this.logger.error(
+          `File delete failed from ${bucket}/${path}: ${error.message}`,
+        );
+        throw new BadRequestException(`File delete failed: ${error.message}`);
+      }
+      this.logger.log(`File deleted successfully from ${bucket}/${path}`);
+    } catch (error) {
+      this.logger.error(`File deletion error: ${error.message}`);
+      throw error;
     }
-    this.logger.log(`File deleted successfully from ${bucket}/${path}`);
+  }
+
+  // NEW: Method to check if file exists
+  async fileExists(bucket: string, path: string): Promise<boolean> {
+    try {
+      const { data } = await this.supabase.storage.from(bucket).list('', {
+        limit: 1,
+        offset: 0,
+        search: path,
+      });
+
+      return data && data.length > 0;
+    } catch (error) {
+      this.logger.error(`Error checking file existence: ${error.message}`);
+      return false;
+    }
   }
 }
