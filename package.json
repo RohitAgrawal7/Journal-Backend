@@ -5,9 +5,9 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
-   "engines": {
-    "node": ">=20.0.0",
-    "npm": ">=9.0.0"
+  "engines": {
+    "node": "20.18.0",
+    "npm": ">=10.0.0"
   },
   "scripts": {
     "build": "nest build",
@@ -21,7 +21,8 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "prebuild": "node -e \"console.log('Building with Node.js', process.version)\""
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",
@@ -34,6 +35,7 @@
     "@supabase/supabase-js": "^2.56.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "compression": "^1.7.4",
     "handlebars": "^4.7.8",
     "nodemailer": "^7.0.6",
     "pg": "^8.16.3",
