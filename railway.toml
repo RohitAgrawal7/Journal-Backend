@@ -1,23 +1,26 @@
-# railway.toml - Updated for Node.js 20
 [build]
 builder = "nixpacks"
 buildCommand = "npm run build"
 nixpacksVersion = "1.13.1"
 
+[build.environment]
+NODE_VERSION = "20.18.0"
+
 [deploy]
-startCommand = "npm run start:prod"
+startCommand = "node -r ./dist/crypto-polyfill.js dist/main"
 healthcheckPath = "/api/health"
-healthcheckTimeout = 60
+healthcheckTimeout = 120
+initialDelay = 45
 
 [[services]]
-name = "ujgsm-backend"
+name = "web"
 [[services.ports]]
 port = 3000
 http = true
 
 [services.env]
 NODE_ENV = "production"
-NODE_VERSION = "20"
+NODE_VERSION = "20.18.0"
 
 [services.scale]
 min = 1
