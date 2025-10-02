@@ -1,5 +1,25 @@
+# railway.toml - Updated for Node.js 20
 [build]
 builder = "nixpacks"
+buildCommand = "npm run build"
+nixpacksVersion = "1.13.1"
 
 [deploy]
 startCommand = "npm run start:prod"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 30
+
+[[services]]
+name = "ujgsm-backend"
+[[services.ports]]
+port = 3000
+http = true
+
+[services.env]
+NODE_ENV = "production"
+NODE_VERSION = "20"
+
+[services.scale]
+min = 1
+max = 2
+memory = 1024
