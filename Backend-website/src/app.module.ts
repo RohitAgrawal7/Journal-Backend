@@ -10,6 +10,7 @@ import { StudentModule } from './student/student.module';
 import { ReviewerModule } from './reviewer/reviewer.module';
 // import { EmailService } from './email/email.service';
 import { EmailModule } from './email/email.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -45,7 +46,8 @@ import { EmailModule } from './email/email.module';
     StudentModule,
     ReviewerModule,
     // EmailService,
-    EmailModule,
+  EmailModule,
+  HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
