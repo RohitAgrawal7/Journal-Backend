@@ -8,10 +8,10 @@ export class SupabaseService {
   private readonly logger = new Logger(SupabaseService.name);
 
   constructor(configService: ConfigService) {
-    const supabaseUrl = configService.get<string>('SUPABASE_URL');
+    const supabaseUrl = configService.get<string>('SUPABASE_URL')?.trim();
     const supabaseServiceRoleKey = configService.get<string>(
       'SUPABASE_SERVICE_ROLE_KEY',
-    );
+    )?.trim();
 
     const missing: string[] = [];
     if (!supabaseUrl) missing.push('SUPABASE_URL');
