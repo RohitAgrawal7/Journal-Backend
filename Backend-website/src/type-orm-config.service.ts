@@ -9,15 +9,15 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
   createTypeOrmOptions(): TypeOrmModuleOptions {
     return {
       type: 'postgres',
-      host: this.configService.get<string>('DATABASE_HOST'),
-      port: this.configService.get<number>('DATABASE_PORT'),
+      host: this.configService.get<string>('DATABASE_HOST') || 'aws-1-ap-south-1.pooler.supabase.com',
+      port: this.configService.get<number>('DATABASE_PORT') || 5432,
       username: this.configService.get<string>('DATABASE_USERNAME'),
       password: this.configService.get<string>('DATABASE_PASSWORD'),
       database: this.configService.get<string>('DATABASE_NAME'),
 
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true, // Set to false in production
-      //   ssl: { rejectUnauthorized: false }, // Required for Supabase
+      ssl: { rejectUnauthorized: false }, // Required for Supabase
     };
   }
 }
