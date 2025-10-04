@@ -36,6 +36,8 @@ import { HealthModule } from './health/health.module';
         // Supabase
         SUPABASE_URL: Joi.string().uri().required(),
         SUPABASE_SERVICE_ROLE_KEY: Joi.string().required(),
+        // Frontend CORS (comma-separated origins)
+        FRONTEND_ORIGINS: Joi.string().optional().allow(''),
       }),
     }),
     TypeOrmModule.forRootAsync({
