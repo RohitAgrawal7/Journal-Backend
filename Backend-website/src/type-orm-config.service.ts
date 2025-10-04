@@ -7,6 +7,8 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
   constructor(private configService: ConfigService) {}
 
   createTypeOrmOptions(): TypeOrmModuleOptions {
+    const isProduction = process.env.NODE_ENV === 'production';
+    
     return {
       type: 'postgres',
       host: this.configService.get<string>('DATABASE_HOST') || 'aws-1-ap-south-1.pooler.supabase.com',
@@ -16,8 +18,9 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
       database: this.configService.get<string>('DATABASE_NAME'),
 
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true, // Set to false in production
+      synchronize: !isProduction, // Only synchronize in development
       ssl: { rejectUnauthorized: false }, // Required for Supabase
+      logging: !isProduction, // Only log in development
     };
   }
 }
