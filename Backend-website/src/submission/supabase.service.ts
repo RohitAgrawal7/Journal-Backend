@@ -13,18 +13,37 @@ export class SupabaseService {
       'SUPABASE_SERVICE_ROLE_KEY',
     );
 
-    if (!supabaseUrl || !supabaseServiceRoleKey) {
+    const missing: string[] = [];
+    if (!supabaseUrl) missing.push('SUPABASE_URL');
+    if (!supabaseServiceRoleKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+    if (missing.length) {
+      this.logger.error(
+        `Missing environment variables: ${missing.join(', ')}`,
+      );
       throw new BadRequestException(
-        'Supabase configuration is missing in environment variables',
+        `Missing environment variables: ${missing.join(', ')}`,
       );
     }
 
-    this.supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    const url = supabaseUrl as string;
+    const serviceKey = supabaseServiceRoleKey as string;
+
+    this.supabase = createClient(url, serviceKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
     });
+
+    // Log minimal, non-sensitive info to confirm configuration
+    try {
+      const masked = `${serviceKey.slice(0, 4)}***${serviceKey.slice(-4)}`;
+      this.logger.log(
+        `Supabase client initialized for ${new URL(url).host} with key ${masked}`,
+      );
+    } catch (_) {
+      // ignore URL parsing issues; not critical
+    }
   }
 
   async uploadFile(
