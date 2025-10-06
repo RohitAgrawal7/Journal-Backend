@@ -11,10 +11,18 @@ export class EmailService {
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || '587'),
       secure: false,
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 50,
+      rateDelta: 1000,
+      rateLimit: 10,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD,
       },
+      connectionTimeout: 15000,
+      greetingTimeout: 10000,
+      socketTimeout: 20000,
     });
   }
 

@@ -8,10 +8,12 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
 
   createTypeOrmOptions(): TypeOrmModuleOptions {
     const isProduction = process.env.NODE_ENV === 'production';
-    
+
     return {
       type: 'postgres',
-      host: this.configService.get<string>('DATABASE_HOST') || 'aws-1-ap-south-1.pooler.supabase.com',
+      host:
+        this.configService.get<string>('DATABASE_HOST') ||
+        'aws-1-ap-south-1.pooler.supabase.com',
       port: this.configService.get<number>('DATABASE_PORT') || 5432,
       username: this.configService.get<string>('DATABASE_USERNAME'),
       password: this.configService.get<string>('DATABASE_PASSWORD'),

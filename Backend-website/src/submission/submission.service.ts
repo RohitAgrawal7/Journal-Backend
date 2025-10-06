@@ -77,26 +77,27 @@ export class SubmissionService {
       const submission = this.submissionRepository.create(submissionData);
       const savedSubmission = await this.submissionRepository.save(submission);
 
-      // Send confirmation email - make sure this is called
-      try {
-        await this.emailService.sendSubmissionConfirmation(
+      // Send confirmation email in background (non-blocking)
+      this.emailService
+        .sendSubmissionConfirmation(
           savedSubmission.correspondingAuthorEmail,
           savedSubmission.correspondingAuthorName,
           savedSubmission.trackingId,
           savedSubmission.manuscriptTitle,
+        )
+        .then(() =>
+          this.logger.log(
+            `Confirmation email queued/sent to ${savedSubmission.correspondingAuthorEmail}`,
+          ),
+        )
+        .catch((emailError) =>
+          this.logger.error(
+            `Failed to send confirmation email: ${emailError.message}`,
+          ),
         );
-        this.logger.log(
-          `Confirmation email sent to ${savedSubmission.correspondingAuthorEmail}`,
-        );
-      } catch (emailError) {
-        this.logger.error(
-          `Failed to send confirmation email: ${emailError.message}`,
-        );
-        // Don't throw error - submission was successful, just email failed
-      }
 
-      this.logger.log(`Creating submission with tracking ID: ${trackingId}`);
-      return await this.submissionRepository.save(submission);
+      this.logger.log(`Created submission with tracking ID: ${trackingId}`);
+      return savedSubmission;
     } catch (error) {
       this.logger.error(`Submission creation failed: ${error.message}`);
       if (filePath) {
@@ -295,25 +296,26 @@ export class SubmissionService {
       const updatedSubmission =
         await this.submissionRepository.save(submission);
 
-      // Send status update email
-      try {
-        await this.emailService.sendStatusUpdate(
+      // Send status update email in background (non-blocking)
+      this.emailService
+        .sendStatusUpdate(
           updatedSubmission.correspondingAuthorEmail,
           updatedSubmission.correspondingAuthorName,
           updatedSubmission.trackingId,
           updatedSubmission.manuscriptTitle,
           updatedSubmission.status,
           updatedSubmission.adminRemarks || '',
+        )
+        .then(() =>
+          this.logger.log(
+            `Status update email queued/sent to ${updatedSubmission.correspondingAuthorEmail} for submission ${id} with status ${status}`,
+          ),
+        )
+        .catch((emailError) =>
+          this.logger.error(
+            `Failed to send status update email: ${emailError.message}`,
+          ),
         );
-        this.logger.log(
-          `Status update email sent to ${updatedSubmission.correspondingAuthorEmail} for submission ${id} with status ${status}`,
-        );
-      } catch (emailError) {
-        this.logger.error(
-          `Failed to send status update email: ${emailError.message}`,
-        );
-        // Non-blocking: update succeeds even if email fails
-      }
 
       this.logger.log(`Updated status of submission ${id} to ${status}`);
       return updatedSubmission;
