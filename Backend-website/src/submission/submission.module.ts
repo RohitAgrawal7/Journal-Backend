@@ -13,6 +13,7 @@ import { EmailService } from '../email/email.service'; // Add this
     TypeOrmModule.forFeature([Submission]),
   ],
   providers: [SubmissionService, SupabaseService, EmailService],
+  exports: [SupabaseService],
   controllers: [SubmissionController],
 })
 export class SubmissionModule {}
