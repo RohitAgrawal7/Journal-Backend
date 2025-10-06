@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import cors from 'cors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -14,24 +15,27 @@ async function bootstrap() {
   const defaultOrigins = [
     'http://localhost:5173',
     'http://localhost:3000',
+    'https://journal-backend-production-a363.up.railway.app',
   ];
 
   const regexes = [/\.railway\.app$/, /\.vercel\.app$/];
 
   const allowlist = [...defaultOrigins, ...envOrigins];
 
-  app.enableCors({
-    origin: (origin, callback) => {
-      // Allow non-browser requests (no origin)
-      if (!origin) return callback(null, true);
-      if (allowlist.includes(origin) || regexes.some((r) => r.test(origin))) {
-        return callback(null, true);
-      }
-      return callback(new Error(`CORS blocked for origin: ${origin}`), false);
-    },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
-  }); // For frontend
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        // Allow non-browser requests (no origin)
+        if (!origin) return callback(null, true);
+        if (allowlist.includes(origin) || regexes.some((r) => r.test(origin))) {
+          return callback(null, true);
+        }
+        return callback(new Error(`CORS blocked for origin: ${origin}`), false);
+      },
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+      credentials: true,
+    }),
+  ); // For frontend
   
   const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');
