@@ -1,12 +1,14 @@
 import { Controller, Get } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { SupabaseService } from '../submission/supabase.service';
+import { EmailService } from '../email/email.service';
 
 @Controller('health')
 export class HealthController {
   constructor(
     private readonly dataSource: DataSource,
     private readonly supabase: SupabaseService,
+    private readonly email: EmailService,
   ) {}
 
   @Get()
@@ -24,12 +26,14 @@ export class HealthController {
       .then(() => true)
       .catch(() => false);
 
-    const status = dbOk && supabaseOk ? 'ok' : 'degraded';
+    const emailPing = await this.email.ping();
+    const status = dbOk && supabaseOk && emailPing.ok ? 'ok' : 'degraded';
     return {
       status,
       checks: {
         database: dbOk ? 'ok' : 'fail',
         supabase: supabaseOk ? 'ok' : 'fail',
+        email: emailPing.ok ? `ok (${emailPing.provider})` : `fail (${emailPing.reason || 'unknown'})`,
       },
       timestamp: new Date().toISOString(),
     };

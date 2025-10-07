@@ -45,10 +45,28 @@ export class EmailService {
         connectionTimeout,
         greetingTimeout,
         socketTimeout,
+        // Allow configuring TLS behavior if provider needs it
+        requireTLS: (process.env.SMTP_REQUIRE_TLS || 'false').toLowerCase() === 'true',
+        ignoreTLS: (process.env.SMTP_IGNORE_TLS || 'false').toLowerCase() === 'true',
+        tls: {
+          rejectUnauthorized:
+            (process.env.SMTP_REJECT_UNAUTHORIZED || 'true').toLowerCase() ===
+            'true',
+        },
       };
 
       this.transporter = nodemailer.createTransport(transportOptions);
       this.logger.log('Email provider: SMTP (nodemailer)');
+
+      // Non-blocking verify to surface connectivity issues in logs
+      this.transporter
+        .verify()
+        .then(() => this.logger.log('SMTP transporter verified successfully'))
+        .catch((err) =>
+          this.logger.warn(
+            `SMTP verify failed: ${err?.message || String(err)}`,
+          ),
+        );
     }
   }
 
@@ -929,16 +947,77 @@ export class EmailService {
         );
         this.logger.log(`Email sent via Resend to ${to}`);
       } else if (this.transporter) {
-        await this.withTimeout(
-          this.transporter.sendMail({
-            from,
-            to,
-            subject,
-            html,
-          }),
-          maxWaitMs,
-        );
-        this.logger.log(`Email sent via SMTP to ${to}`);
+        try {
+          await this.withTimeout(
+            this.retryWithBackoff(
+              () =>
+                this.transporter!.sendMail({
+                  from,
+                  to,
+                  subject,
+                  html,
+                }),
+              2,
+              500,
+            ),
+            maxWaitMs,
+          );
+          this.logger.log(`Email sent via SMTP to ${to}`);
+        } catch (smtpErr) {
+          // Fallback to SMTPS:465 if connection errors
+          const isConnErr = /ETIMEDOUT|ECONNREFUSED|ECONNRESET|ENOTFOUND|EHOSTUNREACH/i.test(
+            String(smtpErr?.message || ''),
+          );
+          if (isConnErr) {
+            try {
+              const altTransport = nodemailer.createTransport({
+                host: process.env.SMTP_HOST,
+                port: 465,
+                secure: true,
+                auth:
+                  process.env.SMTP_USER && process.env.SMTP_PASSWORD
+                    ? {
+                        user: process.env.SMTP_USER,
+                        pass: process.env.SMTP_PASSWORD,
+                      }
+                    : undefined,
+                connectionTimeout: parseInt(
+                  process.env.SMTP_CONNECTION_TIMEOUT || '10000',
+                  10,
+                ),
+                greetingTimeout: parseInt(
+                  process.env.SMTP_GREETING_TIMEOUT || '10000',
+                  10,
+                ),
+                socketTimeout: parseInt(
+                  process.env.SMTP_SOCKET_TIMEOUT || '10000',
+                  10,
+                ),
+                tls: {
+                  rejectUnauthorized:
+                    (process.env.SMTP_REJECT_UNAUTHORIZED || 'true').toLowerCase() ===
+                    'true',
+                },
+              } as SMTPTransport.Options);
+
+              await this.withTimeout(
+                altTransport.sendMail({ from, to, subject, html }),
+                maxWaitMs,
+              );
+              this.logger.log(
+                `Email sent via SMTP fallback (465) to ${to}`,
+              );
+              return;
+            } catch (fallbackErr) {
+              this.logger.error(
+                `SMTP fallback failed to ${to}: ${fallbackErr?.message || fallbackErr}`,
+              );
+              throw fallbackErr;
+            }
+          } else {
+            throw smtpErr;
+          }
+        }
       } else {
         throw new Error('No email provider configured');
       }
@@ -974,6 +1053,22 @@ export class EmailService {
         const delay = baseDelayMs * Math.pow(2, attempt - 1);
         await new Promise((res) => setTimeout(res, delay));
       }
+    }
+  }
+
+  // Lightweight connectivity check for health endpoint
+  async ping(): Promise<{ ok: boolean; provider: 'smtp' | 'resend' | 'none'; reason?: string }> {
+    try {
+      if (this.useResend && this.resend) {
+        return { ok: true, provider: 'resend' };
+      }
+      if (!this.transporter) {
+        return { ok: false, provider: 'none', reason: 'No email transporter configured' };
+      }
+      await this.withTimeout(this.transporter.verify(), 5000);
+      return { ok: true, provider: 'smtp' };
+    } catch (err) {
+      return { ok: false, provider: 'smtp', reason: (err as Error)?.message || String(err) };
     }
   }
 }

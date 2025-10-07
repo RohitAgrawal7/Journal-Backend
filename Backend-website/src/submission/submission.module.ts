@@ -5,14 +5,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Submission } from './submission.entity';
 import { SupabaseService } from './supabase.service';
 import { ConfigModule } from '@nestjs/config'; // Add this import
-import { EmailService } from '../email/email.service'; // Add this
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
     ConfigModule, // Import ConfigModule to provide ConfigService
+    EmailModule,
     TypeOrmModule.forFeature([Submission]),
   ],
-  providers: [SubmissionService, SupabaseService, EmailService],
+  providers: [SubmissionService, SupabaseService],
   exports: [SupabaseService],
   controllers: [SubmissionController],
 })
