@@ -15,7 +15,7 @@ async function bootstrap() {
   const defaultOrigins = [
     'http://localhost:5173',
     'http://localhost:3000',
-    'https://journal-backend-production-a363.up.railway.app',
+    'https://journal-backend-production-b8f2.up.railway.app',
   ];
 
   const regexes = [/\.railway\.app$/, /\.vercel\.app$/];

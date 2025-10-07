@@ -1,47 +1,55 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import SMTPTransport from 'nodemailer/lib/smtp-transport';
+import { Resend } from 'resend';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private transporter: nodemailer.Transporter;
+  private transporter?: nodemailer.Transporter;
+  private resend?: Resend;
+  private useResend = false;
 
   constructor() {
-    // Configure conservative timeouts and SMTP options
-    const host = process.env.SMTP_HOST;
-    const port = parseInt(process.env.SMTP_PORT || '587', 10);
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASSWORD;
-    const secure = (process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
-    const connectionTimeout = parseInt(process.env.SMTP_CONNECTION_TIMEOUT || '10000', 10);
-    const greetingTimeout = parseInt(process.env.SMTP_GREETING_TIMEOUT || '10000', 10);
-    const socketTimeout = parseInt(process.env.SMTP_SOCKET_TIMEOUT || '10000', 10);
-    const requireTLS = (process.env.SMTP_REQUIRE_TLS || 'false').toLowerCase() === 'true';
-    const ignoreTLS = (process.env.SMTP_IGNORE_TLS || 'false').toLowerCase() === 'true';
-    const rejectUnauthorized = (process.env.SMTP_REJECT_UNAUTHORIZED || 'true').toLowerCase() === 'true';
+    const resendKey = process.env.RESEND_API_KEY?.trim();
+    if (resendKey) {
+      this.resend = new Resend(resendKey);
+      this.useResend = true;
+      this.logger.log('Email provider: Resend (HTTP API)');
+    } else {
+      // Configure conservative timeouts so emails never block API responses for long
+      const port = parseInt(process.env.SMTP_PORT || '587', 10);
+      const secure =
+        (process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
+      const connectionTimeout = parseInt(
+        process.env.SMTP_CONNECTION_TIMEOUT || '10000',
+        10,
+      );
+      const greetingTimeout = parseInt(
+        process.env.SMTP_GREETING_TIMEOUT || '10000',
+        10,
+      );
+      const socketTimeout = parseInt(
+        process.env.SMTP_SOCKET_TIMEOUT || '10000',
+        10,
+      );
 
-    const transportOptions: SMTPTransport.Options = {
-      host,
-      port,
-      secure,
-      auth: user && pass ? { user, pass } : undefined,
-      connectionTimeout,
-      greetingTimeout,
-      socketTimeout,
-      requireTLS,
-      ignoreTLS,
-      tls: { rejectUnauthorized },
-    };
+      const transportOptions: SMTPTransport.Options = {
+        host: process.env.SMTP_HOST,
+        port,
+        secure,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASSWORD,
+        },
+        connectionTimeout,
+        greetingTimeout,
+        socketTimeout,
+      };
 
-    this.transporter = nodemailer.createTransport(transportOptions);
-  this.logger.log(`SMTP configured host=${host} port=${port} secure=${secure}`);
-
-    // Non-blocking connectivity check to surface SMTP issues early
-    this.transporter
-      .verify()
-      .then(() => this.logger.log('SMTP transporter verified successfully'))
-      .catch((err) => this.logger.warn(`SMTP verify failed: ${err?.message || err}`));
+      this.transporter = nodemailer.createTransport(transportOptions);
+      this.logger.log('Email provider: SMTP (nodemailer)');
+    }
   }
 
   async sendSubmissionConfirmation(
@@ -901,63 +909,44 @@ export class EmailService {
     html: string,
   ): Promise<void> {
     try {
-      const from = process.env.SMTP_FROM || 'noreply@ujgsm.com';
+      const from = process.env.RESEND_FROM || process.env.SMTP_FROM || 'noreply@ujgsm.com';
       const maxWaitMs = parseInt(process.env.EMAIL_MAX_WAIT_MS || '8000', 10);
 
-      // Primary attempt on configured transport
-      await this.withTimeout(
-        this.retryWithBackoff(
-          () =>
-            this.transporter.sendMail({
+      if (this.useResend && this.resend) {
+        await this.withTimeout(
+          this.retryWithBackoff(async () => {
+            const result = await this.resend!.emails.send({
               from,
               to,
               subject,
               html,
-            }),
-          2,
-          500,
-        ),
-        maxWaitMs,
-      );
-      this.logger.log(`Email sent via SMTP to ${to}`);
-    } catch (error) {
-      // Optional fallback: try implicit SMTPS (465) if first attempt failed with connection issues
-      const isConnErr = /ETIMEDOUT|ECONNREFUSED|ECONNRESET|ENOTFOUND|EHOSTUNREACH/i.test(
-        String(error?.message || ''),
-      );
-      if (isConnErr) {
-        try {
-          const altTransport = nodemailer.createTransport({
-            host: process.env.SMTP_HOST,
-            port: 465,
-            secure: true,
-            auth:
-              process.env.SMTP_USER && process.env.SMTP_PASSWORD
-                ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD }
-                : undefined,
-            connectionTimeout: parseInt(process.env.SMTP_CONNECTION_TIMEOUT || '10000', 10),
-            greetingTimeout: parseInt(process.env.SMTP_GREETING_TIMEOUT || '10000', 10),
-            socketTimeout: parseInt(process.env.SMTP_SOCKET_TIMEOUT || '10000', 10),
-            tls: { rejectUnauthorized: (process.env.SMTP_REJECT_UNAUTHORIZED || 'true').toLowerCase() === 'true' },
-          } as SMTPTransport.Options);
-
-          const from = process.env.SMTP_FROM || 'noreply@ujgsm.com';
-          const maxWaitMs = parseInt(process.env.EMAIL_MAX_WAIT_MS || '8000', 10);
-          await this.withTimeout(
-            altTransport.sendMail({ from, to, subject, html }),
-            maxWaitMs,
-          );
-          this.logger.log(`Email sent via SMTP fallback (465) to ${to}`);
-          return;
-        } catch (fallbackErr) {
-          this.logger.error(
-            `SMTP fallback failed to ${to}: ${fallbackErr?.message || fallbackErr}`,
-          );
-        }
+            });
+            if ((result as any).error) {
+              throw new Error((result as any).error.message || 'Resend error');
+            }
+          }, 2, 500),
+          maxWaitMs,
+        );
+        this.logger.log(`Email sent via Resend to ${to}`);
+      } else if (this.transporter) {
+        await this.withTimeout(
+          this.transporter.sendMail({
+            from,
+            to,
+            subject,
+            html,
+          }),
+          maxWaitMs,
+        );
+        this.logger.log(`Email sent via SMTP to ${to}`);
+      } else {
+        throw new Error('No email provider configured');
       }
-
-      this.logger.error(`Failed to send email to ${to}: ${error?.message}`);
-      // Do not throw, to avoid breaking main flow
+    } catch (error) {
+      this.logger.error(
+        `Failed to send email to ${to}: ${error.message}: ${error.stack}`,
+      );
+      // Don't throw the error to avoid breaking the main functionality
     }
   }
 
