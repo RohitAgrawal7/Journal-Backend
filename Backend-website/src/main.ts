@@ -19,7 +19,11 @@ async function bootstrap() {
     'https://ujgsm.uorapublications.com',
   ];
 
-  const regexes = [/\.railway\.app$/, /\.vercel\.app$/, /\.uorapublications\.com$/];
+  const regexes = [
+    /\.railway\.app$/,
+    /\.vercel\.app$/,
+    /\.uorapublications\.com$/,
+  ];
 
   const allowlist = [...defaultOrigins, ...envOrigins];
 
@@ -37,7 +41,7 @@ async function bootstrap() {
       credentials: true,
     }),
   ); // For frontend
-  
+
   const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');
   console.log(`Application is running on port ${port}`);
