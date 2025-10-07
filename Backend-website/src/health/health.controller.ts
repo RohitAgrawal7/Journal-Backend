@@ -26,16 +26,17 @@ export class HealthController {
       .then(() => true)
       .catch(() => false);
 
-    const emailPing = await this.email.ping();
-    const status = dbOk && supabaseOk && emailPing.ok ? 'ok' : 'degraded';
+    // const emailPing = await this.email.ping();
+    // const status = dbOk && supabaseOk && emailPing.ok ? 'ok' : 'degraded';
+    const status = dbOk && supabaseOk ? 'ok' : 'degraded';
     return {
       status,
       checks: {
         database: dbOk ? 'ok' : 'fail',
         supabase: supabaseOk ? 'ok' : 'fail',
-        email: emailPing.ok
-          ? `ok (${emailPing.provider})`
-          : `fail (${emailPing.reason || 'unknown'})`,
+        // email: emailPing.ok
+        //   ? `ok (${emailPing.provider})`
+        //   : `fail (${emailPing.reason || 'unknown'})`,
       },
       timestamp: new Date().toISOString(),
     };
