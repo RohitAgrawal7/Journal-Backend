@@ -33,7 +33,9 @@ export class HealthController {
       checks: {
         database: dbOk ? 'ok' : 'fail',
         supabase: supabaseOk ? 'ok' : 'fail',
-        email: emailPing.ok ? `ok (${emailPing.provider})` : `fail (${emailPing.reason || 'unknown'})`,
+        email: emailPing.ok
+          ? `ok (${emailPing.provider})`
+          : `fail (${emailPing.reason || 'unknown'})`,
       },
       timestamp: new Date().toISOString(),
     };

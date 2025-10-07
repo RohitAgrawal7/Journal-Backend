@@ -889,4 +889,45 @@ export class EmailService {
       // Don't throw the error to avoid breaking the main functionality
     }
   }
+
+  async ping(): Promise<{
+    ok: boolean;
+    provider: 'smtp' | 'resend' | 'none';
+    reason?: string;
+  }> {
+    try {
+      if (!this.transporter) {
+        return {
+          ok: false,
+          provider: 'none',
+          reason: 'No email transporter configured',
+        };
+      }
+      await this.withTimeout(this.transporter.verify(), 5000);
+      return { ok: true, provider: 'smtp' };
+    } catch (err) {
+      return {
+        ok: false,
+        provider: 'smtp',
+        reason: (err as Error)?.message || String(err),
+      };
+    }
+  }
+
+  private async withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`Operation timed out after ${ms} ms`));
+      }, ms);
+      promise
+        .then((value) => {
+          clearTimeout(timer);
+          resolve(value);
+        })
+        .catch((err) => {
+          clearTimeout(timer);
+          reject(err);
+        });
+    });
+  }
 }
