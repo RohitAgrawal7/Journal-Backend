@@ -16,9 +16,10 @@ async function bootstrap() {
     'http://localhost:5173',
     'http://localhost:3000',
     'https://journal-backend-production-b8f2.up.railway.app',
+    'https://ujgsm.uorapublications.com',
   ];
 
-  const regexes = [/\.railway\.app$/, /\.vercel\.app$/];
+  const regexes = [/\.railway\.app$/, /\.vercel\.app$/, /\.uorapublications\.com$/];
 
   const allowlist = [...defaultOrigins, ...envOrigins];
 
