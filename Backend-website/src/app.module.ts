@@ -27,12 +27,16 @@ import { HealthModule } from './health/health.module';
         DATABASE_NAME: Joi.string().required(),
         DATABASE_USERNAME: Joi.string().required(),
         DATABASE_PASSWORD: Joi.string().required(),
-        // SMTP
-        SMTP_HOST: Joi.string().required(),
-        SMTP_PORT: Joi.number().default(587),
-        SMTP_USER: Joi.string().required(),
-        SMTP_PASSWORD: Joi.string().required(),
-        SMTP_FROM: Joi.string().required(),
+  // Email providers
+  // Resend (preferred on Railway). If provided, SMTP_* may be omitted.
+  RESEND_API_KEY: Joi.string().optional().allow(''),
+  RESEND_FROM: Joi.string().optional().allow(''),
+  // SMTP (fallback)
+  SMTP_HOST: Joi.string().optional().allow(''),
+  SMTP_PORT: Joi.number().default(587),
+  SMTP_USER: Joi.string().optional().allow(''),
+  SMTP_PASSWORD: Joi.string().optional().allow(''),
+  SMTP_FROM: Joi.string().optional().allow(''),
         // Supabase
         SUPABASE_URL: Joi.string().uri().required(),
         SUPABASE_SERVICE_ROLE_KEY: Joi.string().required(),
