@@ -20,24 +20,24 @@ export class EmailService {
       // Configure conservative timeouts so emails never block API responses for long
       const port = parseInt(process.env.SMTP_PORT || '587', 10);
       const secure =
-        (process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
+        (process.env.SMTP_SECURE || '').toLowerCase() === 'true' ||
+        port === 465;
       const connectionTimeout = parseInt(
-        process.env.SMTP_CONNECTION_TIMEOUT || '10000',
+        process.env.SMTP_CONNECTION_TIMEOUT || '300000',
         10,
       );
       const greetingTimeout = parseInt(
-        process.env.SMTP_GREETING_TIMEOUT || '10000',
+        process.env.SMTP_GREETING_TIMEOUT || '300000',
         10,
       );
       const socketTimeout = parseInt(
-        process.env.SMTP_SOCKET_TIMEOUT || '10000',
+        process.env.SMTP_SOCKET_TIMEOUT || '300000',
         10,
       );
 
       const transportOptions: SMTPTransport.Options = {
         host: process.env.SMTP_HOST,
         port,
-        secure,
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASSWORD,
@@ -909,22 +909,29 @@ export class EmailService {
     html: string,
   ): Promise<void> {
     try {
-      const from = process.env.RESEND_FROM || process.env.SMTP_FROM || 'noreply@ujgsm.com';
+      const from =
+        process.env.RESEND_FROM || process.env.SMTP_FROM || 'noreply@ujgsm.com';
       const maxWaitMs = parseInt(process.env.EMAIL_MAX_WAIT_MS || '8000', 10);
 
       if (this.useResend && this.resend) {
         await this.withTimeout(
-          this.retryWithBackoff(async () => {
-            const result = await this.resend!.emails.send({
-              from,
-              to,
-              subject,
-              html,
-            });
-            if ((result as any).error) {
-              throw new Error((result as any).error.message || 'Resend error');
-            }
-          }, 2, 500),
+          this.retryWithBackoff(
+            async () => {
+              const result = await this.resend!.emails.send({
+                from,
+                to,
+                subject,
+                html,
+              });
+              if ((result as any).error) {
+                throw new Error(
+                  (result as any).error.message || 'Resend error',
+                );
+              }
+            },
+            2,
+            500,
+          ),
           maxWaitMs,
         );
         this.logger.log(`Email sent via Resend to ${to}`);
@@ -953,7 +960,10 @@ export class EmailService {
   private async withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
     let timeoutId: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(() => reject(new Error(`Email send timed out after ${ms}ms`)), ms);
+      timeoutId = setTimeout(
+        () => reject(new Error(`Email send timed out after ${ms}ms`)),
+        ms,
+      );
     });
     try {
       const result = await Promise.race([promise, timeoutPromise]);
@@ -963,7 +973,11 @@ export class EmailService {
     }
   }
 
-  private async retryWithBackoff<T>(fn: () => Promise<T>, retries = 2, baseDelayMs = 500): Promise<T> {
+  private async retryWithBackoff<T>(
+    fn: () => Promise<T>,
+    retries = 2,
+    baseDelayMs = 500,
+  ): Promise<T> {
     let attempt = 0;
     while (true) {
       try {
