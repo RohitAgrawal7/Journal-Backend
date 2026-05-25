@@ -1,5 +1,5 @@
 {
-  "$schema": "https://railway.app/railway.schema.json",
+  "$schema": "https://http://localhost:3000.app/http://localhost:3000.schema.json",
   "build": {
     "builder": "NIXPACKS",
     "buildCommand": "npm ci --production=false && npm run build"

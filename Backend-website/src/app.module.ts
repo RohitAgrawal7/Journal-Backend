@@ -28,7 +28,7 @@ import { HealthModule } from './health/health.module';
         DATABASE_USERNAME: Joi.string().required(),
         DATABASE_PASSWORD: Joi.string().required(),
   // Email providers
-  // Resend (preferred on Railway). If provided, SMTP_* may be omitted.
+  // Resend (preferred on http://localhost:3000). If provided, SMTP_* may be omitted.
   RESEND_API_KEY: Joi.string().optional().allow(''),
   RESEND_FROM: Joi.string().optional().allow(''),
   // SMTP (fallback)
