@@ -1,0 +1,52 @@
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+
+  // Build CORS allowlist from env or fall back to sensible defaults
+  const envOrigins = (process.env.FRONTEND_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const defaultOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://journal-backend-production-b8f2.up.railway.app',
+    'https://ujgsm.uorapublications.com',
+  ];
+
+  const regexes = [
+    /^http:\/\/localhost:\d+$/,
+    /^http:\/\/127\.0\.0\.1:\d+$/,
+    /\.railway\.app$/,
+    /\.vercel\.app$/,
+    /\.uorapublications\.com$/,
+  ];
+
+  const allowlist = [...defaultOrigins, ...envOrigins];
+
+  app.enableCors({
+    origin: (origin, callback) => {
+      // Allow non-browser requests (no origin)
+      if (!origin) return callback(null, true);
+      if (allowlist.includes(origin) || regexes.some((r) => r.test(origin))) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS blocked for origin: ${origin}`), false);
+    },
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    credentials: true,
+    optionsSuccessStatus: 204,
+  });
+
+  const port = process.env.PORT || 3000;
+  await app.listen(port, '0.0.0.0');
+  console.log(`Application is running on port ${port}`);
+  console.log(`CORS allowlist: ${allowlist.join(', ')}`);
+}
+bootstrap();

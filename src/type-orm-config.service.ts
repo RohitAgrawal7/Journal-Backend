@@ -1,0 +1,28 @@
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { TypeOrmOptionsFactory, TypeOrmModuleOptions } from '@nestjs/typeorm';
+
+@Injectable()
+export class TypeOrmConfigService implements TypeOrmOptionsFactory {
+  constructor(private configService: ConfigService) {}
+
+  createTypeOrmOptions(): TypeOrmModuleOptions {
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    return {
+      type: 'postgres',
+      host:
+        this.configService.get<string>('DATABASE_HOST') ||
+        'aws-1-ap-south-1.pooler.supabase.com',
+      port: this.configService.get<number>('DATABASE_PORT') || 5432,
+      username: this.configService.get<string>('DATABASE_USERNAME'),
+      password: this.configService.get<string>('DATABASE_PASSWORD'),
+      database: this.configService.get<string>('DATABASE_NAME'),
+
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: !isProduction, // Only synchronize in development
+      ssl: { rejectUnauthorized: false }, // Required for Supabase
+      logging: !isProduction, // Only log in development
+    };
+  }
+}
